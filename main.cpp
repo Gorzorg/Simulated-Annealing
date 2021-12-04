@@ -39,22 +39,21 @@ vector<vector<float> > CSV_to_graph( std::ifstream CSV_FILE, std::string format 
     // if the file is corrupted, it returns [ [ -1] ]
     vector<vector<float> > V;//maybe inefficient
     string S;
-    int line_count= -1;
     if (format == "matrix"){
-        while(CSV_FILE){
-            V.push_back( vector<float>() );
-            line_count++;
-            getline(CSV_FILE, S, '\n');
+        while(CSV_FILE){//while there is something more to read
+            V.push_back( vector<float>() );//push_back is a method provided by the vector class, which expands the vector adding the argument you provide it after the last entry.
+            getline(CSV_FILE, S, '\n');//reads the file you CSV_FILE, until it finds a \n char, and then stores the result (excluding the \n) into the string S.
             size_t current_position=0, next_comma;
             while( current_position != string::npos){
-                next_comma = S.find_first_of(',', current_position);
-                V[line_count].push_back(stof( S.substr(current_position, next_comma - current_position ) ));
+                next_comma = S.find_first_of(',', current_position);//find_first_of returns the first index such that S[index] == ','
+                V.back().push_back(stof( S.substr(current_position, next_comma - current_position ) )); /* the back() method returns the last entry of a vector,
+                the stof function transforms a string into a float number, and the S.substr(a,b) returns the string S[a]...S[a+b-1] . */
                 current_position = next_comma +1;
             }
         }
         int L = V.size();
-        for(int c=0; c<L; c++){
-            if(V[c].size() != L){
+        for(int c=0; c<L; c++){//this block checks if V is actually a square matrix
+            if(V[c].size() != L){// if it is not, initialize V = [ [1] ] and return it
                 V = vector< vector<float> > ();
                 V.push_back( vector<float> (-1) );
                 return V;
