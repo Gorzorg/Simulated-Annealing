@@ -10,7 +10,7 @@ using namespace std;
 
 float CSV_to_edge_length( std::ifstream CSV_FILE, std::string format, int node1, int node2 ){
     // takes as input a CSV file, and two node IDs. Returns the length of the edge from node1 to node2
-    // if the file is somehow corrupted, it should return -1.
+    // if the file is somehow corrupted, it should return -1. 
     string S;
     if (format=="matrix"){
         for(int c=0; c<node1; c++){
