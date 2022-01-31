@@ -35,7 +35,6 @@ float CSV_to_edge_length( std::ifstream CSV_FILE, std::string format, int node1,
     }
 }
 
-
 vector<vector<float> > CSV_to_graph( std::ifstream CSV_FILE, std::string format ) {
     //given a CSV file, and an encoding format, it returns a graph adjacency matrix.
     // if the file is corrupted, it returns [ [ -1] ]
@@ -99,3 +98,14 @@ pass pointers to objects around as one does in python, i.e. pretending you pass 
     }
     return current_state;
 }
+
+/*
+TBD:
+- change the template, so that the temperature scheme accepts (current state, diff. cost function with the previous state) as input, and so that it outputs (new temperature, frequency of new temperature).
+- new template for simulated annealing, in which the random neighbor and the difference in cost are computed by the same function.
+
+Make functions for traveling salesman problems, specifically:
+- a function which creates a random initial path
+- a function which, given a path, provides a new random path (we will start with just switching 2 vertices), together with the diff. cost value (which implies we know the cost of the new state).
+- a function such that, given ( best state so far & its cost, current state & its cost, temperature & its frequency f), iterates the simulated annealing process f times, updates the best state so far & its cost, and outputs the last state visited & its cost.
+*/
