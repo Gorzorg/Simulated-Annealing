@@ -142,7 +142,12 @@ class permutation_generator{
     std::vector<size_t> currently_selected_objects;//is actually a copy of this->objects[0:k], where k <= max_number_of_permutated_objects.
     std::vector<size_t> current_permutation_of_selected_objects;
     RNG_type RNG;
-    std::vector<std::uniform_int_distribution<size_t> > uniform_distributions;
+
+    //these are helper vectors which will be filled with uniform_int_distribution objects. We will allocate these vectors at initialization time,
+    // and leave them basically untouched. Their purpse is avoiding the initialization of many uniform_int_distribution objects
+    // every time we want to shuffle things.
+    std::vector<std::uniform_int_distribution<size_t> > uniform_distributions_1;
+    std::vector<std::uniform_int_distribution<size_t> > uniform_distributions_2;
 
 
     permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects, RNG_type RNG){
@@ -163,28 +168,43 @@ class permutation_generator{
         current_permutation_of_selected_objects.reserve(max_number_of_permutated_objects);
 
         //initializing the uniform distribution objects which we will keep in memory for quick reuse during the generation of new permutations
-        uniform_distributions = std::vector<std::uniform_int_distribution<size_t> >();
-        for(size_t i = 0; i + 2 < number_of_objects; i++){
-            uniform_distributions.push_back(std::uniform_int_distribution<size_t>(i, number_of_objects - 1));
+        uniform_distributions_1 = std::vector<std::uniform_int_distribution<size_t> >();
+        for(size_t i = 0; i + 1 < number_of_objects; i++){
+            uniform_distributions_1.push_back(std::uniform_int_distribution<size_t>(i, number_of_objects - 1));
+        }
+        uniform_distributions_2 = std::vector<std::uniform_int_distribution<size_t> >();
+        for(size_t i = 0; i < max_number_of_permutated_objects; i++){
+            uniform_distributions_2.push_back(std::uniform_int_distribution<size_t>(0, i));
         }
     }
 
-    void update_current_permutation_of_selected_objects(){
-        //fisher-yates shuffle on current_permutation_of_selected_objects.
-        current_permutation_of_selected_objects.resize(0);
-        std::uniform_int_distribution<int> distribution(0,9);
-        for(size_t i = 0; i < std::min(max_number_of_permutated_objects, number_of_objects - 2); i++){
-            std::swap(objects[i], objects[uniform_distributions[i](RNG)])
-        }
-    }
-
-    void generate_permutation(){
-        //stores in (what, goes_where) a random permutation encoded with PERMUTATION_REPRESENTATION_FORMAT#2.
-        // the permutation will be chosen at random among those with less than max_number_of_permutated_objects non-fixed points.
-        // The law of the resulting permutation will not be uniform: it will have a bias towards those with more fixed points.
+    void new_permutation(){
+        //stores in (currently_selected_objects, current_permutation_of_selected_objects) a random permutation encoded with PERMUTATION_REPRESENTATION_FORMAT#2.
+        // The permutation we will build will have at most max_number_of_permutated_objects non-fixed points, but one should notice that among
+        // the permutations satisfying the constraint, the law of the resulting permutation will not be uniform: it will have a bias towards those with more fixed points.
         //
         //Maybe in the future we should implement a uniform law, but that seems to be more complicated to implement than what we do here.
-        // Here, we first generate a uniformly random permutation on the set {0, ..., max_number_of_permutated_objects - 1} encoded with PERMUTATION_REPRESENTATION_FORMAT#1.
-        // Then, we
+        //
+        //Anyways, that is no big deal as soon as max_number_of_permutated_objects becomes somewhat big:
+        // The expected number of fixed points in a uniformly chosen permutation is 1, so
+        // the expected number of fixed points in current_permutation_of_selected_objects will also be 1,
+        // so even if the procedure we apply biases the distribution, the effect is arguably small and not worth correcting. 
+
+        //first we choose max_number_of_permutated_objects objects uniformly at random from objects 
+        size_t M = std::min(max_number_of_permutated_objects, number_of_objects - 2);
+        for(size_t i = 0; i < M; i++){
+            std::swap(objects[i], objects[uniform_distributions_1[i](RNG)]);
+        }
+
+        //then we copy those elements to currently_selected_objects
+        for(size_t i = 0; i < max_number_of_permutated_objects;){
+            currently_selected_objects[i] = objects[i];
+        }
+        std::sort(currently_selected_objects.begin(), currently_selected_objects.end());//sorting because PERMUTATION_REPRESENTATION_FORMAT#2 requires it.
+
+        //then we shuffle current_permutation_of_selected_objects uniformly at random.
+        for(size_t i = max_number_of_permutated_objects; --i;){
+            std::swap(current_permutation_of_selected_objects[i], current_permutation_of_selected_objects[uniform_distributions_2[i](RNG)]);
+        }
     }
 };
