@@ -10,20 +10,22 @@
 // by the permutation of some of its vertices.
 
 //let's specify some shorthand type names
+using size_t = std::size_t;
+
 template<typename T>
 using matrix = std::vector<std::vector<T> >;
 
-using path_t = std::vector<size_t>;
+using path_t = std::vector<std::size_t>;
 
 //we specify is the cost function of a path
-template<typename T>
-T cost_function(path_t& path, matrix<T> graph){
+template<typename num_type>
+num_type cost_function(path_t& path, matrix<T>& graph){
     if(path.size() < 2){
         return (T)0;
     }
     size_t v1 = path.back();
     size_t v2 = path[0];
-    T cost = graph[v1][v2];
+    num_type cost = graph[v1][v2]:
     for(size_t i = path.size() - 1; i != 0;){
         v2 = path[--i];
         cost += graph[v2][v1];
@@ -139,8 +141,6 @@ class permutation_generator{
     size_t number_of_objects;
     size_t max_number_of_permutated_objects;
     std::vector<size_t> objects;
-    std::vector<size_t> currently_selected_objects;//is actually a copy of this->objects[0:k], where k <= max_number_of_permutated_objects.
-    std::vector<size_t> current_permutation_of_selected_objects;
     RNG_type RNG;
 
     //these are helper vectors which will be filled with uniform_int_distribution objects. We will allocate these vectors at initialization time,
@@ -149,13 +149,23 @@ class permutation_generator{
     std::vector<std::uniform_int_distribution<size_t> > uniform_distributions_1;
     std::vector<std::uniform_int_distribution<size_t> > uniform_distributions_2;
 
+public:
+    std::vector<size_t> currently_selected_objects;//is actually a copy of this->objects[0:k], where k <= max_number_of_permutated_objects.
+    std::vector<size_t> current_permutation_of_selected_objects;
 
-    permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects, RNG_type RNG){
+    permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects);
+    //We leave open the possibility of defining a standard way of initializing the RNG, depending on the type of the RNG
+
+    permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects, RNG_type RNG) {
         this->number_of_objects = number_of_objects;
         this->max_number_of_permutated_objects = max_number_of_permutated_objects;
         this->RNG = RNG;
 
-        objects = std::vector<size_t>;
+        helper_attributes_default_initialization();
+    }
+
+    void helper_attributes_default_initialization(){
+        objects = std::vector<size_t>();
         objects.reserve(number_of_objects);
         for(size_t i = 0; i < number_of_objects; i++){
             objects.push_back(i);
@@ -206,5 +216,74 @@ class permutation_generator{
         for(size_t i = max_number_of_permutated_objects; --i;){
             std::swap(current_permutation_of_selected_objects[i], current_permutation_of_selected_objects[uniform_distributions_2[i](RNG)]);
         }
+    }
+};
+
+permutation_generator<std::mt19937>::permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects) {
+    std::random_device rd;
+    RNG = std::mt19937(rd());
+
+    this->number_of_objects = number_of_objects;
+    this->max_number_of_permutated_objects = max_number_of_permutated_objects;
+
+    helper_attributes_default_initialization();
+}
+
+template<typename RNG_type, typename num_type>
+class traveling_salesman_state_generator {
+    matrix<num_type>* graph;
+    path_t current_path;
+    size_t number_of_vertices;
+
+    num_type cost_current_path;
+    num_type cost_next_path_minus_cost_current_path;
+
+    permutation_generator<RNG_type> permutation_generator;
+    path_t auxiliary_memory_for_path_update;
+
+    traveling_salesman_state_generator(matrix<num_type>* graph, permutation_generator<RNG_type> permutation_generator) {
+        this->permutation_generator = permutation_generator;
+        this->graph = graph;
+        number_of_vertices = graph[0].size();
+        current_path = path_t();
+        current_path.reserve(number_of_vertices);
+        for (size_t i = 0; i < number_of_vertices; i++) {
+            current_path.push_back(i);
+        }
+        cost_current_path = cost_function<num_type>(current_path, graph);
+        auxiliary_memory_for_path_update = path_t(permutation_generator.max_number_of_permutated_objects, 0);
+    }
+
+public:
+    path_t& current_state() {
+        return current_path;
+    }
+
+    num_type current_cost() {
+        return cost_current_path;
+    }
+    
+    void copy_current_state_to(path_t& target) {
+        target = current_path;
+    }
+
+    num_type cost_difference() {
+        return cost_difference_after_permutation<num_type>(current_path, graph,
+            permutation_generator.currently_selected_objects, permutation_generator.current_permutation_of_selected_objects);
+    }
+
+    void update_state() {
+        size_t& MNPO = permutation_generator.max_number_of_permutated_objects;
+        path_t& CSO = permutation_generator.currently_selected_objects;
+        for (size_t i = MNPO; i--;) {
+            auxiliary_memory_for_path_update[i] = current_path[CSO[i]];
+        }
+        for (size_t i = MNPO; i--;) {
+            current_path[CSO[i]] = auxiliary_memory_for_path_update[permutation_generator.current_permutation_of_selected_objects[i]];
+        }
+        cost_current_path += cost_next_path_minus_cost_current_path;
+        //if num_type is susceptible to loss of numerical precision, there should be a mechanism in place
+        // to actually compute the cost of the new state from time to time, so that the difference between
+        // the actual cost and the computed cost stays bounded.
     }
 };
