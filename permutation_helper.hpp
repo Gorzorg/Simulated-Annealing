@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -19,13 +21,13 @@ using path_t = std::vector<std::size_t>;
 
 //we specify is the cost function of a path
 template<typename num_type>
-num_type cost_function(path_t& path, matrix<T>& graph){
+num_type cost_function(path_t& path, matrix<num_type>& graph){
     if(path.size() < 2){
-        return (T)0;
+        return (num_type)0;
     }
     size_t v1 = path.back();
     size_t v2 = path[0];
-    num_type cost = graph[v1][v2]:
+    num_type cost = graph[v1][v2];
     for(size_t i = path.size() - 1; i != 0;){
         v2 = path[--i];
         cost += graph[v2][v1];
@@ -49,20 +51,20 @@ void path_after_permutation(path_t& path, path_t& path_after_permutation, std::v
     //We assume (what, goes where) satisfy PERMUTATION_REPRESENTATION_FORMAT#2
     //The number of elements moved is assumed small with respect to the length of path.
     path_after_permutation = path;
-    for(int i = what.size(); i-- != 0; ){
+    for(int i = what.size(); i--; ){
         path_after_permutation[what[i]] = path[what[goes_where[i]]];
     }
 }
 
-void invert_full_permutation(std::vector<size_t>& V, std::vector<size_t>& inverse_of_V){
+void invert_full_permutation(path_t& V, path_t& inverse_of_V){
     //given V satisfying PERMUTATION_REPRESENTATION_FORMAT#1, we store into inverse_of_V, again using PERMUTATION_REPRESENTATION_FORMAT#1, the permutation V^(-1)
-    inverse_of_V = std::vector<size_t>(V.size(), 0);
-    for(size_t i = V.size(); i-- != 0;){
+    inverse_of_V.resize(V.size(), 0);
+    for(size_t i = V.size(); i--;){
         inverse_of_V[V[i]] = i;
     }
 }
 
-void invert_permutation(std::vector<size_t>& what, std::vector<size_t>& goes_where, std::vector<size_t>& inverse_goes_where){
+void invert_permutation(path_t& what, path_t& goes_where, path_t& inverse_goes_where){
     //given (what, goes_where) satisfying PERMUTATION_REPRESENTATION_FORMAT#2, we build inverse_goes_where in a way such that
     // (what, inverse_goes_where) represents the permutation (what, goes_where)^(-1).
     //luckily for us, the encoding format makes it easy and we only have to invert goes_where.
@@ -78,57 +80,47 @@ void path_after_swap(path_t& path, path_t& path_after_swap, size_t a, size_t b){
 
 template<typename T>
 T cost_difference_after_permutation(path_t& path, matrix<T>& graph, std::vector<size_t>& what, std::vector<size_t>& goes_where){
-    // I AM NOT REALLY SURE ABOUT THE CORRECTNESS OF THIS FUNCTION!
-    // TO BE TESTED ACCURATELY
-
     //(what, goes_where) is assumed to satisfy PERMUTATION_REPRESENTATION_FORMAT#2.
     //The function outputs cost_function(path o (what, goes_where)) - cost_function(path).
     //in case the permutation leaves a lot of fixed vertices, this is faster than computing cost_function(path_after_permutation(path, what, goes_where)).
-
-    std::vector<size_t> inverse_goes_where ();
-    invert_permutation(what, goes_where, inverse_goes_where);
-    for(size_t i = what.size(); i-- != 0;){
-        inverse_goes_where[i] = path[what[inverse_goes_where[i]]];
-    }
 
     //we will keep two different counts to determine the difference. posdiff will represent all the contributions given by the new path in spots in which it
     // differs from the given one. negdiff will represent the contributions given by the given path in the same spots. posdiff - negdiff will be the output of this function.
     T posdiff = (T)0;
     T negdiff = (T)0;
-
-    //we take care of the first and last iteration of the loop which follows these conditionals
-    // these iteration have to take into account that the indices of path and what loop mod path.size() and what.size() respectively.
-    // in order to better understand what is going on in the following conditional, it is better to first read the for loop after it.
+    
     if(what[0] == 0 && what.back() == path.size() - 1){
-        posdiff += graph[inverse_goes_where.back()][inverse_goes_where[0]];
+        posdiff += graph[path[what[goes_where.back()]]][path[what[goes_where[0]]]];
         negdiff += graph[path.back()][path[0]];
     } else {
         if(what[0] == 0){
-            posdiff += graph[path.back()][inverse_goes_where[0]];
+            posdiff += graph[path.back()][path[what[goes_where[0]]]];
             negdiff += graph[path.back()][path[0]];
         } else{
-            posdiff += graph[path[what[0] - 1]][inverse_goes_where[0]];
+            posdiff += graph[path[what[0] - 1]][path[what[goes_where[0]]]];
             negdiff += graph[path[what[0] - 1]][path[what[0]]];
         }
         if(what.back() == path.size() - 1){
-            posdiff += graph[inverse_goes_where.back()][path[0]];
+            posdiff += graph[path[what[goes_where.back()]]][path[0]];
             negdiff += graph[path.back()][path[0]];
         } else{
-            posdiff += graph[inverse_goes_where.back()][path[what.back() + 1]];
+            posdiff += graph[path[what[goes_where.back()]]][path[what.back() + 1]];
             negdiff += graph[path[what.back()]][path[what.back() + 1]];
         }
     }
-    for(size_t i = what.size() - 1; i != 0; i--){
-        if(what[i - 1] == what[i] - 1){
-            posdiff += graph[inverse_goes_where[i - 1]][inverse_goes_where[i]];  
-        } else{
-            posdiff += graph[path[what[i] - 1]][inverse_goes_where[i]];
 
-            posdiff += graph[inverse_goes_where[i - 1]][path[what[i - 1] + 1]];
+    for(size_t i = what.size() - 1; i; i--){
+        if(what[i - 1] == what[i] - 1){
+            posdiff += graph[path[what[goes_where[i - 1]]]][path[what[goes_where[i]]]];
+        } else {
+            posdiff += graph[path[what[i] - 1]][path[what[goes_where[i]]]];
+
+            posdiff += graph[path[what[goes_where[i - 1]]]][path[what[i - 1] + 1]];
             negdiff += graph[path[what[i - 1]]][path[what[i - 1] + 1]];
         }
         negdiff += graph[path[what[i] - 1]][path[what[i]]];
     }
+    
     return posdiff - negdiff;
 }
 
@@ -138,9 +130,7 @@ class permutation_generator{
     //the permutation is on the set {0, ..., number_of_objects - 1} and has at least (number_of_objects - max_number_of_permutated_objects) fixed points.
     //said permutation is stored in (currently_selected_objects, current_permutation_of_selected_objects).
 
-    size_t number_of_objects;
-    size_t max_number_of_permutated_objects;
-    std::vector<size_t> objects;
+    path_t objects;
     RNG_type RNG;
 
     //these are helper vectors which will be filled with uniform_int_distribution objects. We will allocate these vectors at initialization time,
@@ -150,8 +140,21 @@ class permutation_generator{
     std::vector<std::uniform_int_distribution<size_t> > uniform_distributions_2;
 
 public:
+    size_t number_of_objects;
+    size_t max_number_of_permutated_objects;
     std::vector<size_t> currently_selected_objects;//is actually a copy of this->objects[0:k], where k <= max_number_of_permutated_objects.
     std::vector<size_t> current_permutation_of_selected_objects;
+
+    permutation_generator(){
+        number_of_objects = 1;
+        max_number_of_permutated_objects = 1;
+        objects = path_t();
+        RNG = RNG_type();
+        uniform_distributions_1 = std::vector<std::uniform_int_distribution<size_t> >();
+        uniform_distributions_2 = std::vector<std::uniform_int_distribution<size_t> >();
+        currently_selected_objects = path_t();
+        current_permutation_of_selected_objects = path_t();
+    }
 
     permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects);
     //We leave open the possibility of defining a standard way of initializing the RNG, depending on the type of the RNG
@@ -171,11 +174,14 @@ public:
             objects.push_back(i);
         }
 
-        //initializing the vectors representing the permutation as empty: the default permutation is the identity
+        //initializing the vectors representing the current permutation to represent the identity permutation
         currently_selected_objects = std::vector<size_t>();
         current_permutation_of_selected_objects = std::vector<size_t>();
-        currently_selected_objects.reserve(max_number_of_permutated_objects);//on the other hand, we reserve all the memory we will ever need
-        current_permutation_of_selected_objects.reserve(max_number_of_permutated_objects);
+        for(size_t i = 0; i < max_number_of_permutated_objects; i++){
+            currently_selected_objects.push_back(i);
+            current_permutation_of_selected_objects.push_back(i);
+        }
+
 
         //initializing the uniform distribution objects which we will keep in memory for quick reuse during the generation of new permutations
         uniform_distributions_1 = std::vector<std::uniform_int_distribution<size_t> >();
@@ -207,7 +213,7 @@ public:
         }
 
         //then we copy those elements to currently_selected_objects
-        for(size_t i = 0; i < max_number_of_permutated_objects;){
+        for(size_t i = max_number_of_permutated_objects; i--;){
             currently_selected_objects[i] = objects[i];
         }
         std::sort(currently_selected_objects.begin(), currently_selected_objects.end());//sorting because PERMUTATION_REPRESENTATION_FORMAT#2 requires it.
@@ -219,6 +225,7 @@ public:
     }
 };
 
+template<>
 permutation_generator<std::mt19937>::permutation_generator(size_t number_of_objects, size_t max_number_of_permutated_objects) {
     std::random_device rd;
     RNG = std::mt19937(rd());
@@ -241,8 +248,10 @@ class traveling_salesman_state_generator {
     permutation_generator<RNG_type> permutation_generator;
     path_t auxiliary_memory_for_path_update;
 
-    traveling_salesman_state_generator(matrix<num_type>* graph, permutation_generator<RNG_type> permutation_generator) {
-        this->permutation_generator = permutation_generator;
+public:
+
+    traveling_salesman_state_generator(matrix<num_type>* graph, ::permutation_generator<RNG_type> PG) {
+        this->permutation_generator = PG;
         this->graph = graph;
         number_of_vertices = graph[0].size();
         current_path = path_t();
@@ -250,17 +259,24 @@ class traveling_salesman_state_generator {
         for (size_t i = 0; i < number_of_vertices; i++) {
             current_path.push_back(i);
         }
-        cost_current_path = cost_function<num_type>(current_path, graph);
-        auxiliary_memory_for_path_update = path_t(permutation_generator.max_number_of_permutated_objects, 0);
+        cost_current_path = cost_function<num_type>(current_path, *graph);
+        auxiliary_memory_for_path_update = path_t(PG.max_number_of_permutated_objects, 0);
     }
 
-public:
     path_t& current_state() {
         return current_path;
     }
 
     num_type current_cost() {
+        /* num_type M = cost_function<num_type>(current_path, *graph);
+        if (std::abs(M -  cost_current_path) > 1){
+            std::cout << "aeough " << std::abs(M -  cost_current_path) << std::endl;
+            cost_current_path = M;
+        } */
         return cost_current_path;
+        //if num_type is susceptible to loss of numerical precision, there should be a mechanism in place
+        // to actually compute the cost of the new state from time to time, so that the difference between
+        // the actual cost and the computed cost stays bounded.
     }
     
     void copy_current_state_to(path_t& target) {
@@ -268,7 +284,15 @@ public:
     }
 
     num_type cost_difference() {
-        return cost_difference_after_permutation<num_type>(current_path, graph,
+        return cost_next_path_minus_cost_current_path;
+        //if num_type is susceptible to loss of numerical precision, there should be a mechanism in place
+        // to actually compute the cost of the new state from time to time, so that the difference between
+        // the actual cost and the computed cost stays bounded.
+    }
+
+    void generate_state(){
+        permutation_generator.new_permutation();
+        cost_next_path_minus_cost_current_path = cost_difference_after_permutation<num_type>(current_path, *graph,
             permutation_generator.currently_selected_objects, permutation_generator.current_permutation_of_selected_objects);
     }
 
@@ -282,8 +306,5 @@ public:
             current_path[CSO[i]] = auxiliary_memory_for_path_update[permutation_generator.current_permutation_of_selected_objects[i]];
         }
         cost_current_path += cost_next_path_minus_cost_current_path;
-        //if num_type is susceptible to loss of numerical precision, there should be a mechanism in place
-        // to actually compute the cost of the new state from time to time, so that the difference between
-        // the actual cost and the computed cost stays bounded.
     }
 };
